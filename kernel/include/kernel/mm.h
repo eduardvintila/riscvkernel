@@ -1,7 +1,12 @@
 #ifndef __MM_H__
 #define __MM_H__
 
+#include <stdint.h>
+
 #define PAGE_SIZE 4096
+
+typedef uint64_t phys_addr_t;
+
 
 // A collection of bit-fields which describe a memory page.
 struct page {

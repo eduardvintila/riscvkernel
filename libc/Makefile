@@ -17,7 +17,7 @@ OBJS = $(patsubst %.c,%.o,$(wildcard */*.c))
 
 LIBC_OBJS=$(OBJS:.o=.libc.o)
 
-BINARIES=libckernel.a
+BINARIES=libckernel.a #
 
 .PHONY: all clean install install-headers install-libs
 .SUFFIXES: .o .libc.o .c .S

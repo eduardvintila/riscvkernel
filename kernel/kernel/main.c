@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <kernel/sbi.h>
 #include <kernel/mm.h>
+#include <stdint.h>
 
 void *debug_alloc(unsigned int pages)
 {
@@ -36,6 +37,7 @@ void kernel_main(void)
     debug_free(addr3);
     addr3 = debug_alloc(1);
     debug_alloc(1);
+    // printf("sizeof(size_t) = %l\n", sizeof(size_t));
 
     // debug_free(addr2);
     // debug_free(addr3);
