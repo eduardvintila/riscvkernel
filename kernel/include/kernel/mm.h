@@ -17,9 +17,34 @@ struct page {
     unsigned int last : 1;
 };
 
+
+// Used for traversing the list of free objects in the slab.
+struct free_slab_obj {
+    struct free_slab_obj *next;
+};
+
+// Slab structure which describes a region where objects can be allocated in fixed size chunks.
+struct slab {
+    // Size of each object in the slab.
+    int size;
+
+    // Head of the list of free objects in the slab.
+    struct free_slab_obj *freelist_head;
+
+    // Pointer to the next slab.
+    struct slab *next_slab;
+
+    // Starting address of the slab.
+    phys_addr_t start;
+};
+
 void init_mm(void);
 void *align(void*, unsigned int);
 void *page_alloc(unsigned int);
 void page_free(void*);
+// void *alloc_slab_obj(struct slab *s);
+// struct slab *alloc_slab(unsigned int size);
+void *kalloc(unsigned int bytes);
+void kfree(void *addr);
 
 #endif

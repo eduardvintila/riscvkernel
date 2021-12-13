@@ -23,19 +23,57 @@ static size_t alloc_start_page_idx;
 // Number of pages in the allocatable region.
 static size_t alloc_pages;
 
+// Initial metadata slab used for storing the slab structs.
+static struct slab slab_metadata;
+
+// List of all metadata slabs.
+static struct slab *metadata_slabs;
+
+// List of all non-metadata slabs.
+static struct slab *slabs;
+
+
 /* Align an address at a given power of two. */
 void *align(void *addr, unsigned int power_of_two)
 {
     return (void *) (((phys_addr_t)addr + power_of_two - 1) & ~(power_of_two - 1));
 }
 
-/* Initialize the memory management structures.
- * Those structures will reside at the beginning of the heap section
- * and will be followed by the allocatable region.
+
+/*
+ * Initialize a slab region for objects of a fixed size.
+ */
+static void init_slab(struct slab *s, unsigned int size) {
+    struct free_slab_obj *obj;
+
+    // The minimum number of memory pages needed to represent the slab.
+    unsigned int pages = size / PAGE_SIZE + 1;
+
+    // The number of objects (entries) in the slab.
+    unsigned int entries;
+
+    s->size = size;
+    s->freelist_head = page_alloc(pages); // TODO: Check if allocation was successful
+    s->start = (phys_addr_t) s->freelist_head;
+    s->next_slab = NULL;
+
+    entries = (pages * PAGE_SIZE) / size;
+    obj = s->freelist_head;
+    // Each free object in the slab represents a free_slab_obj struct which points to the next free object.
+    for (unsigned int i = 1; i < entries; i++) {
+        obj->next = (struct free_slab_obj *) (s->start + i * s->size);
+        obj = obj->next;
+    }
+    // The last object in the slab doesn't have a next free object to point to.
+    obj->next = NULL;
+}
+
+/*
+ * Initialize the memory management structures.
  */
 void init_mm(void)
 {
-    // Get the values of the external symbols.
+    // Get the values of the external symbols, describing the starting address of the heap and it's size.
     heap_start = &_heap_start;
     heap_size = (size_t) &_heap_size;
 
@@ -48,16 +86,33 @@ void init_mm(void)
     alloc_pages = heap_pages - alloc_start_page_idx;
 
 
+    // The beginning of the heap section will store the bitmap array
+    //   with information about all memory pages in the heap.
+
     // The first pages in the heap region store the page structures, so they are not allocatable.
     for (size_t i = 0; i < alloc_start_page_idx; i++) {
         p[i].free = 0;
         p[i].last = 0;
     }
 
+    // Mark the remaining pages as allocatable.
     for (size_t i = alloc_start_page_idx; i < heap_pages; i++) {
         p[i].free = 1;
         p[i].last = 0;
     }
+
+
+    // Initialize the first metadata slab which will store the slab structures.
+    init_slab(&slab_metadata, sizeof(struct slab));
+    metadata_slabs = &slab_metadata;
+
+    // No slabs for allocating memory at the moment.
+    slabs = NULL;
+
+    // Preallocate slabs
+    // alloc_slab(4);
+    // alloc_slab(8);
+    // alloc_slab(16);
 }
 
 /* Allocate a number of contiguous memory pages. */
@@ -118,6 +173,143 @@ void page_free(void *addr)
         p[i].free = 1;
         p[i].last = 0;
     }
+}
+
+/*
+ * Allocate a slab for storing object of a fixed size.
+ */
+static struct slab *alloc_slab(unsigned int size)
+{
+    struct slab *s = NULL;
+    if (metadata_slabs->freelist_head != NULL) {
+        if (metadata_slabs->freelist_head->next == NULL) {
+            // This metadata slab has room for one more slab structure.
+            // Use this slot to store a new metadata slab in order to represent future slab structures.
+
+            struct slab *meta_slab = metadata_slabs->freelist_head;
+            init_slab(meta_slab, sizeof(struct slab));
+            meta_slab->next_slab = metadata_slabs;
+            metadata_slabs = meta_slab;
+        }
+
+
+        // Store the structure which describes the slab as an object in the current metadata slab.
+        s = (struct slab *) metadata_slabs->freelist_head;
+        metadata_slabs->freelist_head = metadata_slabs->freelist_head->next;
+
+        init_slab(s, size);
+
+        // Add it at the top of the list of slabs.
+        s->next_slab = slabs;
+        slabs = s;
+
+    }
+
+    return s;
+}
+
+/*
+ * Allocate space for an object in a given slab.
+ */
+static void *alloc_slab_obj(struct slab *s)
+{
+    void *addr = NULL;
+
+    if (s->freelist_head == NULL)
+        return NULL;
+
+    // Move the head of the free list to the next free object.
+    addr = (void *) s->freelist_head;
+    s->freelist_head = s->freelist_head->next;
+
+    return addr;
+}
+
+/*
+ * Free the space occupied by a specific object in a given slab.
+ */
+static void free_slab_obj(struct slab *s, struct free_slab_obj *obj)
+{
+    struct free_slab_obj *p = s->freelist_head;
+
+    if (p != NULL) {
+        // If the freelist_head points to a higher address than the object
+        if ((phys_addr_t) p > (phys_addr_t) obj) {
+            obj->next = p;
+            s->freelist_head = obj;
+        } else {
+            while (p->next != NULL && (phys_addr_t) p->next < (phys_addr_t) obj) { // TODO: Binary search?
+                p = p->next;
+            }
+            // Insert the address of the freed object in the linked list of free objects.
+            obj->next = p->next;
+            p->next = obj;
+        }
+    } else {
+        obj->next = NULL;
+        s->freelist_head = obj;
+    }
+}
+
+/**
+ * Allocate space for a given number of contiguous memory bytes.
+ */
+void *kalloc(unsigned int bytes)
+{
+    struct slab *s, *closest = NULL;
+    unsigned int closest_size = UINT32_MAX;
+    int rem;
+
+    if (slabs != NULL) {
+        // Find the minimum sized slab which can fit the number of bytes to be allocated.
+        s = slabs;
+        while (s != NULL) {
+            // TODO: Binary search
+            // TODO2: Check that the closest slab isn't too big so we don't waste memory
+            if (s->size >= bytes && s->size < closest_size && s->freelist_head != NULL) {
+                closest = s;
+                closest_size = s->size;
+            }
+            s = s->next_slab;
+        }
+
+        if (closest != NULL) {
+            return alloc_slab_obj(closest);
+        }
+    }
+
+    // No appropriate slab was found, therefore a new one has to be created.
+    rem = bytes % 8;
+    if (bytes % 8 == 0)
+        s = alloc_slab(bytes);
+    else
+        // Align at 8 bytes.
+        // TODO: Use align function.
+        s = alloc_slab(bytes + (8 - rem));
+    return alloc_slab_obj(s);
+}
+
+/*
+ * Free the space previously allocated at a given address.
+ */
+void kfree(void *addr)
+{
+    struct slab *s;
+    phys_addr_t _addr = (phys_addr_t) addr;
+
+    if (slabs != NULL) {
+        // Find the slab which contains the object allocated at the address.
+        s = slabs;
+        while (s != NULL) {
+            unsigned int slab_len = (s->size / PAGE_SIZE + 1) * PAGE_SIZE; // Maybe define a macro for this expression?
+            if (s->start <= _addr && s->start + slab_len > _addr) {
+                //int obj_idx = (_addr - s->start) / s->size;
+                free_slab_obj(s, (struct free_slab_obj *) addr);
+                break;
+            }
+            s = s->next_slab;
+        }
+    } // else error!
 }
 
 
