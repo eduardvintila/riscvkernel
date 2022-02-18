@@ -15,6 +15,7 @@ CPPFLAGS = -D__is_kernel
 LIBS = -lckernel -lgcc
 
 OBJS  = $(patsubst %.c,%.o,$(wildcard */*.c))
+OBJS += $(patsubst %.c,%.o,$(wildcard */*/*.c))
 OBJS +=	$(patsubst %.S,%.o,$(wildcard */*.S))
 
 .PHONY: all clean install install-headers install-kernel

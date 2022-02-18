@@ -1,31 +1,31 @@
 #include <kernel/sbi_ecalls.h>
 #include <kernel/mm.h>
 #include <kernel/types.h>
-#include <stdio.h>
+#include <kernel/utils/kprintf.h>
 
 void *debug_page_alloc(unsigned int pages)
 {
     void *addr = page_alloc(pages);
-    printf("Debug alloc %u pages: %l - %l\n", pages, addr, (physical_addr_t)addr + PAGE_SIZE * pages);
+    kprintf("Debug alloc %u pages: 0x%x - 0x%x\n", pages, addr, (physical_addr_t)addr + PAGE_SIZE * pages);
     return addr;
 }
 
 void debug_page_free(void *addr)
 {
-    printf("Free %l\n", (physical_addr_t) addr);
+    kprintf("Free 0x%x\n", (physical_addr_t) addr);
     page_free(addr);
 }
 
 void *debug_kalloc(unsigned int bytes)
 {
     void *addr = kalloc(bytes);
-    printf("Debug alloc %u bytes: %l - %l\n", bytes, addr, (physical_addr_t)addr + bytes);
+    kprintf("Debug alloc %u bytes: 0x%x - 0x%x\n", bytes, addr, (physical_addr_t)addr + bytes);
     return addr;
 }
 
 void *debug_kfree(void *addr)
 {
-    printf("Free %l\n", (physical_addr_t) addr);
+    kprintf("Free 0x%x\n", (physical_addr_t) addr);
     kfree(addr);
 }
 
@@ -40,7 +40,7 @@ void test_alloc1(void)
     void *addr3;
     void *addr4;
 
-    printf("Testing page allocations...\n");
+    kprintf("Testing page allocations...\n");
     addr1 = debug_page_alloc(4);
     addr2 = debug_page_alloc(2);
     addr3 = debug_page_alloc(1);
@@ -51,7 +51,7 @@ void test_alloc1(void)
     addr3 = debug_page_alloc(1);
     debug_page_alloc(1);
 
-    printf("Testing byte allocations...\n");
+    kprintf("Testing byte allocations...\n");
     for (int i = 0; i < ALLOCS; i++)
         addrs[i] = debug_kalloc(32);
 
@@ -60,7 +60,7 @@ void test_alloc1(void)
     addrs[1] = debug_kalloc(32);
     addrs[5] = debug_kalloc(32);
 
-    printf("\n\n\n");
+    kprintf("\n\n\n");
     for (int i = 0; i < ALLOCS; i++)
         addrs[i] = debug_kalloc(7);
 
@@ -77,7 +77,7 @@ void test_alloc1(void)
     // addr4 = debug_kalloc(8);
     // debug_kalloc(5192);
 
-    // printf("sizeof(size_t) = %l\n", sizeof(size_t));
+    // kprintf("sizeof(size_t) = 0x%x\n", sizeof(size_t));
 
     // debug_page_free(addr2);
     // debug_page_free(addr3);
@@ -87,7 +87,7 @@ void test_alloc2(void)
 {
     void *addrs[500];
 
-    printf("Testing kalloc allocations...\n");
+    kprintf("Testing kalloc allocations...\n");
     for (int i = 0; i < 500; i++) {
         addrs[i] = debug_kalloc(8);
     }
@@ -108,11 +108,11 @@ void test_alloc2(void)
 void kernel_main(void)
 {
 
-    printf("Entering the main kernel!\n");
+    kprintf("Entering the main kernel!\n");
     struct sbiret ret = sbi_get_spec_version();
-    printf("SBI version: %l.%l\n", ret.error, ret.value);
+    kprintf("SBI version: %ld.%ld\n", ret.error, ret.value);
     init_mm();
     // TODO: Should actually verify that the mm module init was successful.
-    printf("Memory management module successfully initialized!\n");
+    kprintf("Memory management module successfully initialized!\n");
     test_alloc2();
 }
