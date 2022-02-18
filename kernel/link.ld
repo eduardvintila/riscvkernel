@@ -46,6 +46,7 @@ SECTIONS
 	/*
 	 * Allocate the stack right after the .bss section.
 	 * Note that the stack grows downwards from _stack_top to _stack_bottom.
+	 * TODO: Warning! Make sure the stack region doesn't overlap overlap other memory regions (which could contain the FDT, for example)
 	 */
 	_stack_bottom = .;
 	_stack_top = _stack_bottom + 512K;

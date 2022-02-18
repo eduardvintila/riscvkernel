@@ -19,7 +19,7 @@ boot_page_table0:
 
 _start:
 
-    # TODO: Choose a boot hart, and stop the other harts.
+    # TODO: Choose a boot hart, and stop the other harts using OpenSBI.
 
     # Divide the page table address by 4K to obtain it's physical page number (PPN)
     la s3, boot_page_table0

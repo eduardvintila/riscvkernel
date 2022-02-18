@@ -1,31 +1,31 @@
-#include <stdio.h>
-#include <kernel/sbi.h>
+#include <kernel/sbi_ecalls.h>
 #include <kernel/mm.h>
-#include <stdint.h>
+#include <kernel/types.h>
+#include <stdio.h>
 
 void *debug_page_alloc(unsigned int pages)
 {
     void *addr = page_alloc(pages);
-    printf("Debug alloc %u pages: %l - %l\n", pages, addr, (phys_addr_t)addr + PAGE_SIZE * pages);
+    printf("Debug alloc %u pages: %l - %l\n", pages, addr, (physical_addr_t)addr + PAGE_SIZE * pages);
     return addr;
 }
 
 void debug_page_free(void *addr)
 {
-    printf("Free %l\n", (phys_addr_t) addr);
+    printf("Free %l\n", (physical_addr_t) addr);
     page_free(addr);
 }
 
 void *debug_kalloc(unsigned int bytes)
 {
     void *addr = kalloc(bytes);
-    printf("Debug alloc %u bytes: %l - %l\n", bytes, addr, (phys_addr_t)addr + bytes);
+    printf("Debug alloc %u bytes: %l - %l\n", bytes, addr, (physical_addr_t)addr + bytes);
     return addr;
 }
 
 void *debug_kfree(void *addr)
 {
-    printf("Free %l\n", (phys_addr_t) addr);
+    printf("Free %l\n", (physical_addr_t) addr);
     kfree(addr);
 }
 

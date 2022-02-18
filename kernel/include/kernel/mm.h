@@ -1,11 +1,11 @@
 #ifndef __MM_H__
 #define __MM_H__
 
-#include <stdint.h>
+#include <kernel/types.h>
+#include <sbi/riscv_encoding.h>
 
-#define PAGE_SIZE 4096
-
-typedef uint64_t phys_addr_t;
+#define PAGE_SHIFT	(12)
+#define PAGE_SIZE	(_AC(1, UL) << PAGE_SHIFT)
 
 
 // A collection of bit-fields which describe a memory page.
@@ -35,7 +35,7 @@ struct slab {
     struct slab *next_slab;
 
     // Starting address of the slab.
-    phys_addr_t start;
+    physical_addr_t start;
 };
 
 void init_mm(void);

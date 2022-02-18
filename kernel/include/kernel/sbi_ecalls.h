@@ -9,8 +9,8 @@
 
 #include <sbi/sbi_ecall_interface.h>
 
-#ifndef __SBI_H__
-#define __SBI_H__
+#ifndef __SBI_ECALLS_H__
+#define __SBI_ECALLS_H__
 
 struct sbiret {
     long error;

@@ -1,8 +1,7 @@
 /* Memory Management */
 
 #include <kernel/mm.h>
-#include <stdint.h>
-#include <stddef.h>
+#include <kernel/types.h>
 
 // External symbols from the linker script defining the heap region.
 extern unsigned int _heap_size;
@@ -36,7 +35,7 @@ static struct slab *slabs;
 /* Align an address at a given power of two. */
 void *align(void *addr, unsigned int power_of_two)
 {
-    return (void *) (((phys_addr_t)addr + power_of_two - 1) & ~(power_of_two - 1));
+    return (void *) (((physical_addr_t)addr + power_of_two - 1) & ~(power_of_two - 1));
 }
 
 
@@ -54,7 +53,7 @@ static void init_slab(struct slab *s, unsigned int size) {
 
     s->size = size;
     s->freelist_head = page_alloc(pages); // TODO: Check if allocation was successful
-    s->start = (phys_addr_t) s->freelist_head;
+    s->start = (physical_addr_t) s->freelist_head;
     s->next_slab = NULL;
 
     entries = (pages * PAGE_SIZE) / size;
@@ -82,7 +81,7 @@ void init_mm(void)
 
 
     alloc_start = align(heap_start + heap_pages * sizeof(struct page), PAGE_SIZE);
-    alloc_start_page_idx = ((phys_addr_t)alloc_start - (phys_addr_t)heap_start) / PAGE_SIZE;
+    alloc_start_page_idx = ((physical_addr_t)alloc_start - (physical_addr_t)heap_start) / PAGE_SIZE;
     alloc_pages = heap_pages - alloc_start_page_idx;
 
 
@@ -161,7 +160,7 @@ void *page_alloc(unsigned int pages_to_alloc)
  */
 void page_free(void *addr)
 {
-    size_t addr_page_idx = ((phys_addr_t)addr - (phys_addr_t)heap_start) / PAGE_SIZE;
+    size_t addr_page_idx = ((physical_addr_t)addr - (physical_addr_t)heap_start) / PAGE_SIZE;
     struct page *p = heap_start;
     size_t i = addr_page_idx;
 
@@ -176,7 +175,7 @@ void page_free(void *addr)
 }
 
 /*
- * Allocate a slab for storing object of a fixed size.
+ * Allocate a slab for storing objects of a fixed size.
  */
 static struct slab *alloc_slab(unsigned int size)
 {
@@ -234,11 +233,11 @@ static void free_slab_obj(struct slab *s, struct free_slab_obj *obj)
 
     if (p != NULL) {
         // If the freelist_head points to a higher address than the object
-        if ((phys_addr_t) p > (phys_addr_t) obj) {
+        if ((physical_addr_t) p > (physical_addr_t) obj) {
             obj->next = p;
             s->freelist_head = obj;
         } else {
-            while (p->next != NULL && (phys_addr_t) p->next < (phys_addr_t) obj) { // TODO: Binary search?
+            while (p->next != NULL && (physical_addr_t) p->next < (physical_addr_t) obj) { // TODO: Binary search?
                 p = p->next;
             }
             // Insert the address of the freed object in the linked list of free objects.
@@ -257,7 +256,7 @@ static void free_slab_obj(struct slab *s, struct free_slab_obj *obj)
 void *kalloc(unsigned int bytes)
 {
     struct slab *s, *closest = NULL;
-    unsigned int closest_size = UINT32_MAX;
+    unsigned int closest_size = 0xffffffffU; // UINT_MAX
     int rem;
 
     if (slabs != NULL) {
@@ -295,7 +294,7 @@ void *kalloc(unsigned int bytes)
 void kfree(void *addr)
 {
     struct slab *s;
-    phys_addr_t _addr = (phys_addr_t) addr;
+    physical_addr_t _addr = (physical_addr_t) addr;
 
     if (slabs != NULL) {
         // Find the slab which contains the object allocated at the address.
