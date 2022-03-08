@@ -1,6 +1,7 @@
 #include <kernel/sbi_ecalls.h>
 #include <kernel/mm.h>
 #include <kernel/types.h>
+#include <kernel/traps.h>
 #include <kernel/utils/kprintf.h>
 
 void *debug_page_alloc(unsigned int pages)
@@ -114,5 +115,6 @@ void kernel_main(void)
     init_mm();
     // TODO: Should actually verify that the mm module init was successful.
     kprintf("Memory management module successfully initialized!\n");
-    test_alloc2();
+    //test_alloc2();
+    init_traps();
 }

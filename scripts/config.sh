@@ -4,7 +4,7 @@ SYSTEM_HEADER_PROJECTS="libc kernel"
 PROJECTS="libc kernel"
 
 export MAKE=${MAKE:-make}
-export HOST=riscv64-unknown-elf
+export HOST=riscv64-linux-gnu
 
 export AR=${HOST}-ar
 export AS=${HOST}-as

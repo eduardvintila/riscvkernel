@@ -7,7 +7,7 @@ LIBDIR?=$(EXEC_PREFIX)/lib
 CFLAGS		=	-Iinclude -g -Wall -Werror -ffreestanding -nostdlib -fno-strict-aliasing -O2
 CFLAGS		+=	-fno-omit-frame-pointer
 CFLAGS		+=	-mno-save-restore -mstrict-align
-CFLAGS		+=	-mabi=lp64 -march=rv64imafc
+CFLAGS		+=	-mabi=lp64 -march=rv64gc
 CFLAGS		+=	-mcmodel=medany
 CPPFLAGS =
 LIBC_CFLAGS:=$(CFLAGS)

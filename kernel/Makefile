@@ -5,10 +5,10 @@ BOOTDIR?=$(EXEC_PREFIX)/boot
 INCLUDEDIR?=$(PREFIX)/include
 
 
-CFLAGS		=	-Iinclude -g -Wall -ffreestanding -nostdlib -fno-strict-aliasing -O2
+CFLAGS		=	-Iinclude -g -Wall -Wattributes -ffreestanding -nostdlib -fno-strict-aliasing -O2
 CFLAGS		+=	-fno-omit-frame-pointer
 CFLAGS		+=	-mno-save-restore -mstrict-align
-CFLAGS		+=	-mabi=lp64 -march=rv64imafc
+CFLAGS		+=	-mabi=lp64 -march=rv64gc
 CFLAGS		+=	-mcmodel=medany
 CFLAGS		+=	-fno-pie -no-pie
 CPPFLAGS = -D__is_kernel
@@ -23,7 +23,7 @@ OBJS +=	$(patsubst %.S,%.o,$(wildcard */*.S))
 all: test.kernel
 
 test.kernel: $(OBJS) link.ld
-	$(CC) -T link.ld -Llib $(OBJS) $(LIBS) $(CFLAGS) $(CPPFLAGS) -o $@
+	$(CC) -T link.ld -Llib $(OBJS) $(LIBS) $(CFLAGS) $(CPPFLAGS) -o $@ -Wl,--build-id=none
 
 %.o: %.c
 	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
